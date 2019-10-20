@@ -1,13 +1,13 @@
 // Chainlink adapter for reading/writing transactions via BlockCypher API
 // (https://www.blockcypher.com/dev/bitcoin/)
 //
-// Function: deposit - user provides TXID to smart contract, which is located using API to confirm.
-// 					   Adapter returns hash of TXID, origin address and value using sha3 hashing.
-//				 	   Hash will then be confirmed against hash stored in SC, and account credited if matched.
+// Function: deposit - User provides TXID to smart contract, which is located using API to confirm.
+// 		       Adapter returns hash of TXID, origin address and value using sha3 hashing.
+//		       Hash will then be confirmed against hash stored in SC, and account credited if matched.
 //
 // Function: transaction - User will send destination address and tx value to 3 different Chainlink nodes, each
-//						   of which can part-sign a multisig transaction of the multisig BTC locker. Once 2 of 3
-//						   nodes have signed, BlockCypher API will collate and process transaction.
+//			   of which can part-sign a multisig transaction of the multisig BTC locker. Once 2 of 3
+//			   nodes have signed, BlockCypher API will collate and process transaction.
 
 package main
 
@@ -40,7 +40,7 @@ var numberConfirmations string
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-			log.Print("No .env file found")
+		log.Print("No .env file found")
 	}
 
 	var exists bool
@@ -59,15 +59,15 @@ func init() {
 	numberConfirmations, exists = os.LookupEnv("NUM_OF_CONF")
 
 	if exists != true {
-			log.Print(".env variables did not load correctly")
+		log.Print(".env variables did not load correctly")
 	}
 }
 
-type linkedbtc2 struct{}
+type linkedbtc struct{}
 
 /* Main function which takes parses function string to determine function */
 /* function and parameters fed from SC */
-func (cc *linkedbtc2) Run(h *bridge.Helper) (interface{}, error) {
+func (cc *linkedbtc) Run(h *bridge.Helper) (interface{}, error) {
 	f := h.Data.Get("function")
 	param := h.Data.Get("params").Array()
 
@@ -108,7 +108,7 @@ func sendMultisigTransaction(sendAddress string, txvalue int) (string, error) {
 
   if err != nil {
       fmt.Println(err)
-			return "", err
+      return "", err
   }
 
   //Then follow the New/Send two-step process with this temptx as the input
@@ -117,14 +117,14 @@ func sendMultisigTransaction(sendAddress string, txvalue int) (string, error) {
   err = skel.Sign([]string{cPrivKey})
   if err != nil {
       fmt.Println(err)
-			return "", err
+      return "", err
   }
 
   //Send TXSkeleton
   skel, err = bcy.SendTX(skel)
   if err != nil {
       fmt.Println(err)
-			return "", err
+      return "", err
   }
 
   return skel.Trans.Hash, nil
@@ -143,39 +143,37 @@ func validateUserDeposit(txHash string, txAddress string, txValue string) (strin
     fmt.Println(err)
   }
 
-	params := map[string]string{
-   		"omitWalletAddresses": "true",
-	}
+  params := map[string]string{
+    "omitWalletAddresses": "true",
+  }
 
-	btc := gobcy.API{blockCypherApi, cTicker, cChain}
-	addr, err := btc.GetAddrFull(cAccount, params)
+  btc := gobcy.API{blockCypherApi, cTicker, cChain}
+  addr, err := btc.GetAddrFull(cAccount, params)
 
-	if err != nil {
-  		return "", err
-    }
+  if err != nil {
+    return "", err
+  }
 
-	for _, a := range addr.TXs {
-		if a.Hash == txHash {
-			if (a.Confirmations >= numberConfirmationsLocal) {
-				for _, b := range a.Inputs {
-					inputAddress = b.Addresses[0]
+  for _, a := range addr.TXs {
+  	if a.Hash == txHash {
+		if (a.Confirmations >= numberConfirmationsLocal) {
+			for _, b := range a.Inputs {
+				inputAddress = b.Addresses[0]
+			}
+
+			for _, c := range a.Outputs {
+				if c.Addresses[0] != inputAddress {
+					inputValue = strconv.Itoa(c.Value)
 				}
+			}
 
-				for _, c := range a.Outputs {
-					if c.Addresses[0] != inputAddress {
-						inputValue = strconv.Itoa(c.Value)
-					}
-				}
-
-				if ((txValue == inputValue) && (txAddress == inputAddress)) {
-					hash := solsha3.SoliditySHA3(
-					[]string{"string", "string", "string"},
-					[]interface{}{
-					txHash, txAddress, txValue},
-					)
-					hexstr := "0x" + hex.EncodeToString(hash)
-					return hexstr, nil
-				}
+			if ((txValue == inputValue) && (txAddress == inputAddress)) {
+				hash := solsha3.SoliditySHA3(
+				[]string{"string", "string", "string"},
+				[]interface{}{txHash, txAddress, txValue},)
+				hexstr := "0x" + hex.EncodeToString(hash)
+				return hexstr, nil
+			}
 
 			} else {
 				fmt.Println("Not enough confirmations to verify at this time\n")

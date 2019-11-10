@@ -60,11 +60,11 @@ contract LinkedBtc is Chainlinked, Ownable {
     address oracleAddress;
   }
 
-  mapping(address => userStruct) private userAccounts;
-  mapping(bytes32 => address) private requestToEthAddress;
+  mapping(address => userStruct) public userAccounts;
+  mapping(bytes32 => address) public requestToEthAddress;
 
-  mapping(string => address) private btcToEthAddress;
-  mapping(string => bool) private burntBTCTxs;
+  mapping(string => address) btcToEthAddress;
+  mapping(string => bool) burntBTCTxs;
 
   uint256 public minimumWithdrawValue;
 
@@ -106,7 +106,12 @@ contract LinkedBtc is Chainlinked, Ownable {
   }
 
   function pushNodeArray(string _jobId, address _oracleAddress)
-  public {
+  public
+  onlyOwner
+  {
+    for (uint i=0; i<nodeArray.length; i++) {
+      require(nodeArray[i].oracleAddress != _oracleAddress, "Oracle already registered");
+    }
     nodeArray.push(multiOracle(stringToBytes32(_jobId), _oracleAddress));
   }
 
@@ -180,8 +185,8 @@ contract LinkedBtc is Chainlinked, Ownable {
   public
   returns (uint256)
   {
-    require(btcToEthAddress[_btcAddress] == address(0));
-    uint256 validationRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 9999;
+    require(btcToEthAddress[_btcAddress] == address(0), "Address is already registered");
+    uint256 validationRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % (10 ** 4);
     userAccounts[msg.sender] = userStruct({btcAddress: _btcAddress, btcBalance: 0, btcHoldingBalance: validationRand, validationState: false});
     btcToEthAddress[_btcAddress] = msg.sender;
     return userAccounts[msg.sender].btcHoldingBalance;
@@ -189,7 +194,7 @@ contract LinkedBtc is Chainlinked, Ownable {
     emit UserRegistered(msg.sender, now);
   }
 
-  function showUserValidationSats()
+  function showUserAccount()
   public
   view
   returns (string, uint256, uint256, bool)
@@ -256,7 +261,7 @@ contract LinkedBtc is Chainlinked, Ownable {
   }
 
   function uint2str(uint _i)
-  internal
+  public
   pure
   returns (string memory _uintAsString)
   {
@@ -276,5 +281,21 @@ contract LinkedBtc is Chainlinked, Ownable {
         _i /= 10;
     }
     return string(bstr);
+  }
+
+  function showBurntTxs(string _inAddress)
+  public
+  view
+  returns (bool)
+  {
+    return burntBTCTxs[_inAddress];
+  }
+
+  function showbtcToEthAddress(string _inAddress)
+  public
+  view
+  returns (address)
+  {
+    return btcToEthAddress[_inAddress];
   }
 }

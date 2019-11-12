@@ -1,6 +1,7 @@
 let LinkedBtc = artifacts.require('LinkedBtc')
 let LinkToken = artifacts.require('LinkToken')
 let Oracle = artifacts.require('Oracle')
+let LbtcToken = artifacts.require("./lbtcToken.sol");
 
 module.exports = (deployer, network) => {
 
@@ -10,7 +11,9 @@ module.exports = (deployer, network) => {
   if (!network.startsWith('live')) {
     deployer.deploy(LinkToken).then(() => {
       return deployer.deploy(Oracle, LinkToken.address).then(() => {
-        return deployer.deploy(LinkedBtc, LinkToken.address, defaultMinWithdraw)
+        return deployer.deploy(LbtcToken, "LBTCToken", "LBTC", 8).then(() => {
+          return deployer.deploy(LinkedBtc, LinkToken.address, defaultMinWithdraw, LbtcToken.address);
+        })
       })
     })
   } else {

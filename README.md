@@ -26,6 +26,4 @@ A Go adapter has been written utilising the Linkpool Bridges framework to interf
 ## Outstanding Work
 ```
 - ERC20 token interface to allow free movement of wrapped funds
-- Bug-fix and implementation of SafeMath libraries
-- Truffle unit tests
 ```
